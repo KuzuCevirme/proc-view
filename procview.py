@@ -15,7 +15,7 @@ from urllib.parse import urlparse, parse_qs
 
 import psutil
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 DONATE_URL = "https://buymeacoffee.com/kuzucevirme"
 
 FROZEN = getattr(sys, "frozen", False)  # running as a PyInstaller .exe

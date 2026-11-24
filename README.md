@@ -50,15 +50,27 @@ The registry can't store Realtime, High I/O or affinity; those stay Proc View-on
 
 ## Download & run
 
-1. Download `ProcView.exe` from [Releases](../../releases).
-2. Run it. It asks for administrator rights (needed to see and manage system processes).
-3. Your browser opens the UI at `http://127.0.0.1:8792`. A tray icon (bottom right) stays running:
+1. Download **`ProcView-portable.zip`** from the [latest release](../../releases/latest).
+2. **Extract** it to a folder (don't run it from inside the zip).
+3. Double-click **`Start Proc View.bat`**. It asks for administrator rights (needed to see and
+   manage system processes).
+4. Your browser opens the UI at `http://127.0.0.1:8792`. A tray icon (bottom right) stays running:
    right-click it for **Open** and **Quit**.
 
-Proc View only listens on `127.0.0.1` (your own PC) and has no network or telemetry features.
+Nothing is installed and no internet is needed: the zip contains the official embeddable Python
+from python.org (digitally signed by the Python Software Foundation), the dependencies and the
+plain-text source code. Proc View only listens on `127.0.0.1` (your own PC) and has no network or
+telemetry features.
 
-> Windows SmartScreen or some antivirus programs may warn about unsigned single-file Python apps.
-> If you prefer, run it from source (below) or build the `.exe` yourself.
+### Why not a single .exe?
+
+Single-file Python executables (PyInstaller) unpack themselves to a temp folder at start. Many
+viruses work the same way, so some antivirus programs flag such files with machine-learning
+guesses like `Trojan:Win32/Wacatac.C!ml` even though they are harmless. Proc View also does
+things that look suspicious to heuristics by design: it asks for admin rights, suspends and ends
+processes and can write `Image File Execution Options` registry rules. The portable zip avoids
+the unpacking pattern, and every line of code is readable in `app\procview.py`.
+You can still build a single `.exe` yourself (see below).
 
 ### Run from source
 
@@ -73,13 +85,16 @@ pythonw procview.py
 
 Or double-click `Start Proc View.bat`, which installs the requirements on first run.
 
-### Build the .exe
+### Build
 
 ```powershell
-.\build.bat
+python build_portable.py
 ```
 
-Output: `dist\ProcView.exe` (PyInstaller, single file, no Python needed on the target PC).
+Output: `dist\ProcView-portable.zip` (downloads the embeddable Python version set in the script).
+
+Optional single file: `.\build.bat` builds `dist\ProcView.exe` with PyInstaller (may trigger
+antivirus false positives, see above).
 
 ## Usage tips
 
@@ -91,7 +106,7 @@ Output: `dist\ProcView.exe` (PyInstaller, single file, no Python needed on the t
 
 ## Configuration
 
-All your settings and rules live in **`config.json`** next to `procview.py` / `ProcView.exe`.
+All your settings and rules live in **`config.json`** next to `procview.py` (in the portable zip: `app\config.json`).
 It is created with defaults on first start. Delete it to reset Proc View. It is in `.gitignore`.
 See [`config.example.json`](config.example.json).
 
@@ -113,7 +128,8 @@ Command-line flags: `--no-elevate` (don't ask for admin), `--no-browser` (don't 
 Rules with **Also in registry** stay in Windows after Proc View is deleted. Remove them first:
 
 - In the app: **Priority rules → Remove all from registry**, or
-- Run `ProcView.exe --remove-registry-rules` (or `python procview.py --remove-registry-rules`).
+- Portable zip: double-click `Remove Registry Rules.bat`, or
+- From source: `python procview.py --remove-registry-rules`.
 
 Then delete the folder / exe.
 
