@@ -1,4 +1,4 @@
-﻿"""Proc View - an advanced live process viewer for Windows.
+"""Proc View - an advanced live process viewer for Windows.
 
 Run:  pythonw procview.py   (asks for admin rights so it can see and manage every process)
 """
