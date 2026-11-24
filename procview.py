@@ -181,6 +181,36 @@ def registry_remove(name):
         pass
 
 
+# ---------------------------------------------------------------- protected processes
+def is_protected(p):
+    """True if Windows refuses priority changes (anti-cheat like Easy Anti-Cheat, or a protected
+    system process). Tests by re-setting the current priority, which changes nothing."""
+    try:
+        cur = p.nice()
+    except psutil.AccessDenied:
+        return True
+    except (psutil.Error, OSError):
+        return False
+    try:
+        p.nice(cur)
+        return False
+    except psutil.AccessDenied:
+        return True
+    except (psutil.Error, OSError):
+        return False
+
+
+def denied_msg(name, has_registry_rule=False):
+    if not is_admin():
+        return f"Access denied to {name}: restart Proc View as administrator."
+    base = (f"Windows blocks changes to {name} while it runs: it is protected "
+            f"(anti-cheat such as Easy Anti-Cheat, or a system process).")
+    if has_registry_rule:
+        return base + " Your registry rule will apply the next time it starts."
+    return base + (" Fix: right-click it > Always use priority > pick a level, then"
+                   " Always use priority > Also in registry, and restart the program.")
+
+
 # ---------------------------------------------------------------- sampler
 class Sampler:
     def __init__(self, app):
@@ -204,6 +234,7 @@ class Sampler:
                 s[k] = v
             except (psutil.Error, OSError, SystemError):
                 s[k] = None
+        s["prot"] = is_protected(p)
         if s["user"] and "\\" in s["user"]:
             s["user"] = s["user"].split("\\", 1)[1]
         return s
@@ -226,7 +257,8 @@ class Sampler:
             proc = c["proc"]
             st = c["static"]
             row = {"pid": pid, "name": st["name"] or f"pid {pid}", "exe": st["exe"],
-                   "user": st["user"], "create": st["create"], "cmdline": st["cmdline"]}
+                   "user": st["user"], "create": st["create"], "cmdline": st["cmdline"],
+                   "prot": st["prot"]}
             try:
                 with proc.oneshot():
                     row["cpu"] = round(proc.cpu_percent(None) / self.ncpu, 1)
@@ -431,6 +463,7 @@ class App:
         rule = self.rules_lower().get((d.get("name") or "").lower())
         d["rule"] = rule
         d["suspended"] = p.pid in self.sampler.suspended
+        d["protected"] = is_protected(p)
         return d
 
     # ----- persistent rules
@@ -440,6 +473,10 @@ class App:
         extra = ""
         if rule and rule.get("registry"):
             extra = " + registry (" + registry_write(name, rule) + ")"
+            running = [p for p in psutil.process_iter(["name"])
+                       if (p.info["name"] or "").lower() == name.lower()]
+            if any(is_protected(p) for p in running):
+                extra += " - it's running and protected, so restart it to apply"
         elif old and old.get("registry"):
             registry_remove(name)
             extra = " (removed from registry)"
@@ -479,12 +516,18 @@ class App:
                     r = rules[n]
                     msgs = []
                     try:
-                        if r.get("priority") in PRIORITIES and PRIO_NAME.get(int(p.nice())) != r["priority"]:
+                        cur = PRIO_NAME.get(int(p.nice()))
+                        if r.get("priority") in PRIORITIES and cur != r["priority"]:
                             msgs.append(self.set_priority(p.pid, r["priority"], p))
+                        elif r.get("priority") and r.get("registry"):
+                            msgs.append(f"{p.info['name']} ({p.pid}) started with {cur} priority"
+                                        " (set by Windows from the registry rule)")
                         if r.get("io") in IO_PRIORITIES:
                             try:
                                 if IO_NAME.get(int(p.ionice())) != r["io"]:
                                     msgs.append(self.set_io(p.pid, r["io"], p))
+                            except psutil.AccessDenied:
+                                msgs.append(f"I/O priority for {p.info['name']} ({p.pid}): access denied (protected)")
                             except (psutil.Error, OSError) as e:
                                 msgs.append(f"I/O priority failed: {e}")
                         if r.get("affinity"):
@@ -493,6 +536,9 @@ class App:
                         self.applied[key] = True
                     except psutil.NoSuchProcess:
                         continue
+                    except psutil.AccessDenied:
+                        self.applied[key] = True
+                        msgs.append(f"({p.pid}) " + denied_msg(p.info["name"], bool(r.get("registry"))))
                     except (psutil.Error, OSError) as e:
                         self.applied[key] = True
                         msgs.append(f"rule for {n} ({p.pid}) failed: {e}")
@@ -586,8 +632,14 @@ class App:
                     app.log(msg)
                     self._send(200, {"ok": True, "msg": msg})
                 except psutil.AccessDenied:
-                    self._send(403, {"error": "Access denied (protected/system process"
-                                     + ("" if is_admin() else " - run as admin") + ")"})
+                    try:
+                        name = psutil.Process(int(body.get("pid"))).name()
+                    except Exception:
+                        name = f"PID {body.get('pid')}"
+                    rule = app.rules_lower().get(name.lower(), {})
+                    msg = denied_msg(name, bool(rule.get("registry")))
+                    app.log(msg)
+                    self._send(403, {"error": msg})
                 except psutil.NoSuchProcess:
                     self._send(404, {"error": "process has exited"})
                 except Exception as e:

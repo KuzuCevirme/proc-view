@@ -8,3 +8,6 @@ dist/
 *.spec
 __pycache__/
 *.pyc
+
+# share material (cover image, posts)
+share/
