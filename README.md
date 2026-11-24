@@ -6,7 +6,7 @@
 
 <p align="center">An advanced process viewer for Windows: see every process live and give the ones you care about priority, permanently if you want.</p>
 
-![Proc View screenshot](docs/screenshot.png)
+![Proc View: process list with details panel](docs/details.png)
 
 ## Features
 
@@ -39,6 +39,14 @@
 | Always use priority + Also in registry | Applied by Windows |
 
 The registry can't store Realtime, High I/O or affinity; those stay Proc View-only.
+
+## Screenshots
+
+| Right-click: set priority | Tree view (who started what) |
+|---|---|
+| ![Right-click menu with priority options](docs/menu.png) | ![Tree view](docs/tree.png) |
+| **Priority rules (optionally saved in the registry)** | **Process list** |
+| ![Priority rules dialog](docs/rules.png) | ![Process list](docs/screenshot.png) |
 
 ## Download & run
 

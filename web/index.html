@@ -86,7 +86,8 @@ footer .last{overflow:hidden;text-overflow:ellipsis}
 .menu{position:fixed;z-index:50;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:200px;box-shadow:0 8px 30px #0009;display:none}
 .menu .it{padding:6px 10px;border-radius:5px;cursor:pointer;position:relative;display:flex;justify-content:space-between;gap:10px}
 .menu .it:hover{background:var(--sel)}
-.menu .it.on::before{content:"● ";color:var(--acc)}
+.menu .it.on::before{content:"●";color:var(--acc);position:absolute;left:-2px;font-size:9px}
+.menu .it.on{font-weight:600}
 .menu .sep{height:1px;background:var(--line);margin:4px 2px}
 .menu .sub{display:none;position:absolute;left:100%;top:-4px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:160px}
 .menu .it:hover>.sub{display:block}
@@ -163,7 +164,7 @@ let sortK="cpu",sortAsc=false,view="list",selPid=null,collapsed=new Set(),expand
 let hist={},detail=null,detailTab="general",paused=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-function fmtB(b){if(b==null)return"–";const u=["B","KB","MB","GB","TB"];let i=0;while(b>=1024&&i<4){b/=1024;i++}return(i?b.toFixed(b<10?2:b<100?1:0):b)+" "+u[i]}
+function fmtB(b){if(b==null)return"–";const u=["B","KB","MB","GB","TB"];let i=0;while(b>=1024&&i<4){b/=1024;i++}return(i?b.toFixed(b<10?2:b<100?1:0):Math.round(b))+" "+u[i]}
 function fmtRate(b){return b==null?"–":(b<1?"0":fmtB(b))+"/s"}
 function fmtDur(s){s=Math.floor(s);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d}d ${h}h`:h?`${h}h ${m}m`:`${m}m ${s%60}s`}
 function fmtTime(t){if(!t)return"–";const d=new Date(t*1000),n=new Date();return d.toDateString()==n.toDateString()?d.toLocaleTimeString():d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
