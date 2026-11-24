@@ -1,0 +1,11 @@
+{
+  "host": "127.0.0.1",
+  "port": 8792,
+  "open_browser_on_start": true,
+  "sample_interval_seconds": 1.5,
+  "apply_rules_interval_seconds": 3,
+  "auto_elevate": true,
+  "priority_rules": {
+    "game.exe": { "priority": "high", "io": "high", "affinity": [0, 1, 2, 3] }
+  }
+}

@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proc View</title>
+<style>
+:root{
+  --bg:#0f1218;--panel:#161b24;--panel2:#1c2230;--line:#262e3e;--text:#dfe5ee;--dim:#8792a6;
+  --acc:#3cc88c;--acc2:#4c9bff;--warn:#f0b340;--bad:#ef5b5b;--sel:#22314d;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.35 "Segoe UI",system-ui,sans-serif}
+button,select,input{font:inherit;color:inherit}
+.app{display:grid;grid-template-rows:auto auto 1fr auto;height:100vh}
+header{display:flex;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;align-items:stretch}
+.brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;margin-right:8px}
+.brand i{width:10px;height:10px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc)}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:120px}
+.stat b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+.stat span{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.bar{height:4px;background:var(--line);border-radius:2px;margin-top:4px;overflow:hidden}
+.bar>div{height:100%;background:var(--acc);transition:width .3s}
+.cores{display:flex;gap:2px;align-items:flex-end;height:34px;margin-top:2px}
+.cores div{width:6px;background:var(--acc2);border-radius:1px;min-height:1px;transition:height .3s}
+.badge{margin-left:auto;align-self:center;font-size:11px;padding:3px 8px;border-radius:10px;border:1px solid var(--line)}
+.badge.ok{color:var(--acc);border-color:#2a5a46}.badge.no{color:var(--warn);border-color:#5a4a2a}
+.toolbar{display:flex;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.toolbar input[type=search]{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 10px;width:280px;outline:none}
+.toolbar input[type=search]:focus{border-color:var(--acc2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg button{background:var(--panel2);border:0;padding:5px 12px;cursor:pointer;color:var(--dim)}
+.seg button.on{background:var(--sel);color:var(--text)}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 11px;cursor:pointer}
+.btn:hover{border-color:var(--acc2)}
+.btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+.btn.coffee{background:#ffdd00;color:#1a1a1a;border-color:#ffdd00;text-decoration:none;font-weight:600}
+.btn.coffee:hover{border-color:#fff}
+.btn.primary{background:#1f4b3a;border-color:#2c6a52}
+label.chk{display:flex;gap:5px;align-items:center;color:var(--dim);cursor:pointer}
+.main{display:grid;grid-template-columns:1fr 0;min-height:0;transition:grid-template-columns .2s}
+.main.withside{grid-template-columns:1fr 440px}
+.tablewrap{overflow:auto;min-height:0}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+thead th{position:sticky;top:0;background:var(--panel);z-index:2;text-align:left;font-weight:600;color:var(--dim);padding:6px 8px;border-bottom:1px solid var(--line);cursor:pointer;white-space:nowrap;user-select:none}
+thead th.num,td.num{text-align:right}
+thead th.sorted{color:var(--text)}
+thead th.sorted::after{content:" ▾";font-size:10px}
+thead th.sorted.asc::after{content:" ▴"}
+td{padding:3px 8px;border-bottom:1px solid #1a202b;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis}
+tbody tr{cursor:default}
+tbody tr:hover{background:#18202d}
+tbody tr.sel{background:var(--sel)}
+tr.suspended td{color:#7d8aa8;font-style:italic}
+.tw{display:inline-block;width:14px;color:var(--dim);cursor:pointer;text-align:center}
+.pr{font-size:11px;padding:1px 6px;border-radius:8px;background:#232b3b;color:var(--dim)}
+.pr.high,.pr.above_normal{background:#3a2f17;color:var(--warn)}
+.pr.realtime{background:#4a1d1d;color:var(--bad)}
+.pr.idle,.pr.below_normal{background:#1b2a3f;color:#79a7e8}
+.rule{color:var(--acc);font-size:10px;margin-left:4px}
+.side{background:var(--panel);border-left:1px solid var(--line);overflow:auto;min-height:0}
+.side .hd{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:flex-start}
+.side .hd h2{margin:0;font-size:15px;word-break:break-all}
+.side .hd small{color:var(--dim)}
+.side .x{margin-left:auto;background:none;border:0;color:var(--dim);font-size:18px;cursor:pointer}
+.sec{padding:10px 14px;border-bottom:1px solid var(--line)}
+.sec h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:3px 10px}
+.kv div:nth-child(odd){color:var(--dim)}
+.kv div{word-break:break-all}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.prbtns button{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px 8px;cursor:pointer;font-size:12px}
+.prbtns button.on{background:#1f4b3a;border-color:var(--acc)}
+.prbtns button:hover{border-color:var(--acc2)}
+.aff{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-top:6px}
+.aff label{font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:2px 4px;display:flex;gap:3px;align-items:center;cursor:pointer}
+.tabs{display:flex;gap:2px;padding:0 14px;border-bottom:1px solid var(--line)}
+.tabs button{background:none;border:0;padding:8px 10px;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent}
+.tabs button.on{color:var(--text);border-bottom-color:var(--acc2)}
+.list{font-family:Consolas,monospace;font-size:11.5px;max-height:320px;overflow:auto;padding:4px 14px 12px}
+.list div{padding:2px 0;border-bottom:1px solid #1d2330;word-break:break-all}
+.mono{font-family:Consolas,monospace;font-size:11.5px}
+canvas.spark{width:100%;height:60px;background:var(--panel2);border-radius:6px;border:1px solid var(--line)}
+footer{display:flex;gap:12px;padding:5px 14px;background:var(--panel);border-top:1px solid var(--line);color:var(--dim);font-size:12px;overflow:hidden;white-space:nowrap}
+footer .last{overflow:hidden;text-overflow:ellipsis}
+.menu{position:fixed;z-index:50;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:200px;box-shadow:0 8px 30px #0009;display:none}
+.menu .it{padding:6px 10px;border-radius:5px;cursor:pointer;position:relative;display:flex;justify-content:space-between;gap:10px}
+.menu .it:hover{background:var(--sel)}
+.menu .it.on::before{content:"● ";color:var(--acc)}
+.menu .sep{height:1px;background:var(--line);margin:4px 2px}
+.menu .sub{display:none;position:absolute;left:100%;top:-4px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:4px;min-width:160px}
+.menu .it:hover>.sub{display:block}
+.menu .danger{color:var(--bad)}
+.toast{position:fixed;right:16px;bottom:40px;background:var(--panel2);border:1px solid var(--line);padding:9px 14px;border-radius:8px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:480px;z-index:60}
+.toast.show{opacity:1}.toast.err{border-color:var(--bad);color:#ffb4b4}
+.modal{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:70}
+.modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;width:min(640px,94vw);max-height:80vh;overflow:auto}
+.modal table td{max-width:none}
+@media (max-width:800px){.main.withside{grid-template-columns:0 1fr}.toolbar input[type=search]{width:100%}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><i></i>Proc View</div>
+    <div class="stat"><span>CPU</span><b id="sCpu">–</b><div class="bar"><div id="bCpu"></div></div></div>
+    <div class="stat" style="min-width:160px"><span>Cores</span><div class="cores" id="cores"></div></div>
+    <div class="stat"><span>Memory</span><b id="sMem">–</b><div class="bar"><div id="bMem"></div></div></div>
+    <div class="stat"><span>Network ↓ / ↑</span><b id="sNet">–</b></div>
+    <div class="stat"><span>Processes</span><b id="sCnt">–</b></div>
+    <div class="stat"><span>Threads / Handles</span><b id="sTh">–</b></div>
+    <div class="stat"><span>Uptime</span><b id="sUp">–</b></div>
+    <div class="badge" id="admin">…</div>
+  </header>
+  <div class="toolbar">
+    <input type="search" id="q" placeholder="Filter by name, PID, user, path or command line…  (Ctrl+F)">
+    <div class="seg" id="view"><button data-v="list" class="on">List</button><button data-v="tree">Tree</button><button data-v="group">Grouped</button></div>
+    <label class="chk"><input type="checkbox" id="hideSys"> Hide system</label>
+    <label class="chk"><input type="checkbox" id="pause"> Pause</label>
+    <button class="btn" id="rulesBtn">Priority rules</button>
+    <button class="btn" id="logBtn">Log</button>
+    <span style="margin-left:auto;color:var(--dim)" id="shown"></span>
+    <a class="btn coffee" href="https://buymeacoffee.com/kuzucevirme" target="_blank" rel="noopener" title="Support Proc View">☕ Buy me a coffee</a>
+  </div>
+  <div class="main" id="main">
+    <div class="tablewrap" id="tw">
+      <table>
+        <thead><tr id="head"></tr></thead>
+        <tbody id="body"></tbody>
+      </table>
+    </div>
+    <aside class="side" id="side"></aside>
+  </div>
+  <footer><span id="ft">Connecting…</span><span class="last" id="lastEv"></span></footer>
+</div>
+<div class="menu" id="menu"></div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+
+<script>
+const PRIOS=[["realtime","Realtime"],["high","High"],["above_normal","Above normal"],["normal","Normal"],["below_normal","Below normal"],["idle","Low (idle)"]];
+const PRIO_LABEL=Object.fromEntries(PRIOS);
+const IOS=[["high","High"],["normal","Normal"],["low","Low"],["very_low","Very low"]];
+const COLS=[
+  {k:"name",t:"Name"},
+  {k:"pid",t:"PID",num:1},
+  {k:"cpu",t:"CPU %",num:1},
+  {k:"mem",t:"Memory",num:1},
+  {k:"private",t:"Private",num:1},
+  {k:"io",t:"Disk I/O",num:1},
+  {k:"threads",t:"Threads",num:1},
+  {k:"handles",t:"Handles",num:1},
+  {k:"prio",t:"Priority"},
+  {k:"user",t:"User"},
+  {k:"status",t:"Status"},
+  {k:"create",t:"Started",num:1},
+  {k:"exe",t:"Path"},
+];
+const PRIO_ORDER={realtime:6,high:5,above_normal:4,normal:3,below_normal:2,idle:1};
+const SYS_USERS=new Set(["SYSTEM","LOCAL SERVICE","NETWORK SERVICE"]);
+let S={procs:[],system:{},events:[],rules:{}};
+let sortK="cpu",sortAsc=false,view="list",selPid=null,collapsed=new Set(),expandedGroups=new Set();
+let hist={},detail=null,detailTab="general",paused=false;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function fmtB(b){if(b==null)return"–";const u=["B","KB","MB","GB","TB"];let i=0;while(b>=1024&&i<4){b/=1024;i++}return(i?b.toFixed(b<10?2:b<100?1:0):b)+" "+u[i]}
+function fmtRate(b){return b==null?"–":(b<1?"0":fmtB(b))+"/s"}
+function fmtDur(s){s=Math.floor(s);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60);return d?`${d}d ${h}h`:h?`${h}h ${m}m`:`${m}m ${s%60}s`}
+function fmtTime(t){if(!t)return"–";const d=new Date(t*1000),n=new Date();return d.toDateString()==n.toDateString()?d.toLocaleTimeString():d.toLocaleDateString()+" "+d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
+function heat(v,max){if(!v||v<=0)return"";const a=Math.min(v/max,1);return`background:rgba(240,179,64,${(0.08+a*0.45).toFixed(2)})`}
+function toast(msg,err){const t=$("toast");t.textContent=msg;t.className="toast show"+(err?" err":"");clearTimeout(t._h);t._h=setTimeout(()=>t.className="toast",3200)}
+
+async function act(body){
+  try{
+    const r=await fetch("/api/action",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    const j=await r.json();
+    if(!r.ok)throw new Error(j.error||r.statusText);
+    toast(j.msg);await poll();if(selPid&&body.action!=="kill")loadDetail(selPid);
+    return true;
+  }catch(e){toast(e.message,true);return false}
+}
+
+/* ---------- header ---------- */
+function renderHead(){
+  $("head").innerHTML=COLS.map(c=>`<th data-k="${c.k}" class="${c.num?"num":""} ${sortK==c.k?"sorted"+(sortAsc?" asc":""):""}">${c.t}</th>`).join("");
+}
+$("head").onclick=e=>{const th=e.target.closest("th");if(!th)return;const k=th.dataset.k;if(sortK==k)sortAsc=!sortAsc;else{sortK=k;sortAsc=["name","user","exe","status"].includes(k)}renderHead();render()};
+
+function val(p,k){if(k=="io")return(p.io_r||0)+(p.io_w||0);if(k=="prio")return PRIO_ORDER[p.prio]||0;const v=p[k];return typeof v=="string"?v.toLowerCase():v??-1}
+function cmp(a,b){const x=val(a,sortK),y=val(b,sortK);let r=x<y?-1:x>y?1:0;if(!r)r=a.pid-b.pid;return sortAsc?r:-r}
+
+function matches(p,q){
+  if(!q)return true;
+  return(p.name||"").toLowerCase().includes(q)||String(p.pid)==q||(p.user||"").toLowerCase().includes(q)||(p.exe||"").toLowerCase().includes(q)||(p.cmdline||"").toLowerCase().includes(q);
+}
+
+function rowHtml(p,indent,tw,extra){
+  const n=S.system.ncpu||1;
+  const io=(p.io_r||0)+(p.io_w||0);
+  const cells={
+    name:`<td title="${esc(p.cmdline||p.exe||"")}" style="padding-left:${8+indent*16}px">${tw||""}${esc(p.name)}${extra||""}${p.rule?'<span class="rule" title="A saved priority rule applies">★ rule</span>':""}</td>`,
+    pid:`<td class="num">${p.pid}</td>`,
+    cpu:`<td class="num" style="${heat(p.cpu,25)}">${p.cpu==null?"–":p.cpu.toFixed(1)}</td>`,
+    mem:`<td class="num" style="${heat(p.mem,2e9)}">${fmtB(p.mem)}</td>`,
+    private:`<td class="num">${fmtB(p.private)}</td>`,
+    io:`<td class="num" style="${heat(io,5e7)}" title="read ${fmtRate(p.io_r)} / write ${fmtRate(p.io_w)}">${p.io_r==null?"–":fmtRate(io)}</td>`,
+    threads:`<td class="num">${p.threads??"–"}</td>`,
+    handles:`<td class="num">${p.handles??"–"}</td>`,
+    prio:`<td>${p.prio?`<span class="pr ${p.prio}">${PRIO_LABEL[p.prio]||p.prio}</span>`:"–"}</td>`,
+    user:`<td>${esc(p.user||"–")}</td>`,
+    status:`<td>${esc(p.status||"")}</td>`,
+    create:`<td class="num">${fmtTime(p.create)}</td>`,
+    exe:`<td title="${esc(p.exe||"")}">${esc(p.exe||"")}</td>`,
+  };
+  return`<tr data-pid="${p.pid}" class="${p.pid==selPid?"sel":""} ${p.status=="suspended"?"suspended":""}">${COLS.map(c=>cells[c.k]).join("")}</tr>`;
+}
+
+function render(){
+  const q=$("q").value.trim().toLowerCase();
+  const hideSys=$("hideSys").checked;
+  let list=S.procs.filter(p=>!(hideSys&&(SYS_USERS.has(p.user)||p.user==null||p.pid<=4)));
+  const shownAll=list.length;
+  let html="";
+  if(view=="list"){
+    list=list.filter(p=>matches(p,q)).sort(cmp);
+    html=list.map(p=>rowHtml(p,0)).join("");
+    $("shown").textContent=`${list.length} of ${S.procs.length} shown`;
+  }else if(view=="tree"){
+    const by=new Map(list.map(p=>[p.pid,p]));
+    const kids=new Map();
+    const roots=[];
+    for(const p of list){
+      const par=by.get(p.ppid);
+      if(par&&p.ppid!==p.pid&&par.create<=p.create){(kids.get(p.ppid)||kids.set(p.ppid,[]).get(p.ppid)).push(p)}
+      else roots.push(p);
+    }
+    // when filtering keep matches plus their ancestors
+    let keep=null;
+    if(q){keep=new Set();for(const p of list)if(matches(p,q)){let c=p,g=0;while(c&&!keep.has(c.pid)&&g++<64){keep.add(c.pid);const par=by.get(c.ppid);c=(par&&par.create<=c.create&&c.ppid!==c.pid)?par:null}}}
+    let count=0;
+    const walk=(p,d)=>{
+      if(keep&&!keep.has(p.pid))return;
+      const ch=(kids.get(p.pid)||[]).sort(cmp);
+      const open=!collapsed.has(p.pid)||q;
+      const tw=ch.length?`<span class="tw" data-tog="${p.pid}">${open?"▾":"▸"}</span>`:`<span class="tw"></span>`;
+      html+=rowHtml(p,d,tw);count++;
+      if(open)ch.forEach(c=>walk(c,d+1));
+    };
+    roots.sort(cmp).forEach(r=>walk(r,0));
+    $("shown").textContent=`${count} of ${S.procs.length} shown`;
+  }else{
+    const g=new Map();
+    for(const p of list.filter(p=>matches(p,q))){const k=(p.name||"").toLowerCase();(g.get(k)||g.set(k,[]).get(k)).push(p)}
+    const groups=[...g.values()].map(ps=>{
+      const s={...ps[0],pid:ps[0].pid,_n:ps.length,_ps:ps};
+      for(const k of["cpu","mem","private","io_r","io_w","threads","handles"])s[k]=ps.reduce((a,p)=>a+(p[k]||0),0);
+      s.cpu=Math.round(s.cpu*10)/10;s.rule=ps.some(p=>p.rule);
+      return s;
+    }).sort(cmp);
+    for(const s of groups){
+      if(s._n==1){html+=rowHtml(s._ps[0],0,'<span class="tw"></span>');continue}
+      const k=(s.name||"").toLowerCase(),open=expandedGroups.has(k);
+      html+=rowHtml(s,0,`<span class="tw" data-grp="${esc(k)}">${open?"▾":"▸"}</span>`,` <span style="color:var(--dim)">(${s._n})</span>`);
+      if(open)s._ps.sort(cmp).forEach(p=>html+=rowHtml(p,1,'<span class="tw"></span>'));
+    }
+    $("shown").textContent=`${groups.length} groups, ${S.procs.length} processes`;
+  }
+  const tw=$("tw"),st=tw.scrollTop;
+  $("body").innerHTML=html;tw.scrollTop=st;
+}
+
+$("body").addEventListener("click",e=>{
+  const t=e.target.closest("[data-tog]");if(t){const p=+t.dataset.tog;collapsed.has(p)?collapsed.delete(p):collapsed.add(p);render();return}
+  const g=e.target.closest("[data-grp]");if(g){const k=g.dataset.grp;expandedGroups.has(k)?expandedGroups.delete(k):expandedGroups.add(k);render();return}
+  const tr=e.target.closest("tr");if(!tr)return;select(+tr.dataset.pid);
+});
+$("body").addEventListener("dblclick",e=>{const tr=e.target.closest("tr");if(tr)select(+tr.dataset.pid,true)});
+$("body").addEventListener("contextmenu",e=>{const tr=e.target.closest("tr");if(!tr)return;e.preventDefault();select(+tr.dataset.pid,false);showMenu(e.clientX,e.clientY,+tr.dataset.pid)});
+
+function select(pid,open){
+  selPid=pid;
+  document.querySelectorAll("#body tr.sel").forEach(r=>r.classList.remove("sel"));
+  document.querySelector(`#body tr[data-pid="${pid}"]`)?.classList.add("sel");
+  if(open!==false){$("main").classList.add("withside");loadDetail(pid)}
+}
+
+/* ---------- context menu ---------- */
+function procByPid(pid){return S.procs.find(p=>p.pid==pid)}
+function showMenu(x,y,pid){
+  const p=procByPid(pid);if(!p)return;
+  const m=$("menu");
+  const susp=p.status=="suspended";
+  m.innerHTML=`
+   <div class="it"><b>${esc(p.name)}</b><span style="color:var(--dim)">${pid}</span></div><div class="sep"></div>
+   <div class="it">Set priority<span>›</span><div class="sub">${PRIOS.map(([k,l])=>`<div class="it ${p.prio==k?"on":""}" data-a="priority" data-v="${k}">${l}</div>`).join("")}</div></div>
+   <div class="it">Set I/O priority<span>›</span><div class="sub">${IOS.map(([k,l])=>`<div class="it" data-a="io" data-v="${k}">${l}</div>`).join("")}</div></div>
+   <div class="it">Always use priority<span>›</span><div class="sub">${PRIOS.map(([k,l])=>`<div class="it ${S.rules[p.name]?.priority==k?"on":""}" data-a="rulep" data-v="${k}">${l}</div>`).join("")}<div class="sep"></div><div class="it ${S.rules[p.name]?.registry?"on":""}" data-a="rulereg" title="Windows applies it at program start, even when Proc View is closed">Also in registry</div><div class="it" data-a="ruledel">Remove rule</div></div></div>
+   <div class="it" data-a="details">Details / CPU affinity…</div>
+   <div class="sep"></div>
+   <div class="it" data-a="${susp?"resume":"suspend"}">${susp?"Resume":"Suspend"}</div>
+   <div class="it" data-a="open_location">Open file location</div>
+   <div class="it" data-a="copy">Copy command line</div>
+   <div class="sep"></div>
+   <div class="it danger" data-a="kill">End process</div>
+   <div class="it danger" data-a="killtree">End process tree</div>`;
+  m.style.display="block";
+  const r=m.getBoundingClientRect();
+  m.style.left=Math.min(x,innerWidth-r.width-180)+"px";m.style.top=Math.min(y,innerHeight-r.height-6)+"px";
+  m.onclick=e=>{
+    const it=e.target.closest("[data-a]");if(!it)return;
+    hideMenu();menuAction(it.dataset.a,it.dataset.v,p);
+  };
+}
+function hideMenu(){$("menu").style.display="none"}
+addEventListener("click",e=>{if(!e.target.closest("#menu"))hideMenu()});
+addEventListener("keydown",e=>{
+  if(e.key=="Escape"){hideMenu();$("modal").style.display="none"}
+  if(e.ctrlKey&&e.key=="f"){e.preventDefault();$("q").focus();$("q").select()}
+  if(e.key=="Delete"&&selPid&&document.activeElement.tagName!="INPUT"){const p=procByPid(selPid);if(p)menuAction("kill",null,p)}
+});
+
+async function menuAction(a,v,p){
+  const pid=p.pid;
+  if(a=="priority"){if(v=="realtime"&&!confirm("Realtime priority can freeze your system if this process uses a lot of CPU. Continue?"))return;act({action:"priority",pid,value:v})}
+  else if(a=="io")act({action:"io",pid,value:v});
+  else if(a=="rulep"){const r={...(S.rules[p.name]||{}),priority:v};if(await act({action:"rule",name:p.name,rule:r}))act({action:"priority",pid,value:v})}
+  else if(a=="ruledel")act({action:"rule",name:p.name,rule:null});
+  else if(a=="rulereg"){const r=S.rules[p.name];if(!r)return toast("Pick an \"Always use priority\" level first",true);act({action:"rule",name:p.name,rule:{...r,registry:!r.registry}})}
+  else if(a=="details")select(pid,true);
+  else if(a=="suspend"||a=="resume"||a=="open_location")act({action:a,pid});
+  else if(a=="copy"){navigator.clipboard.writeText(p.cmdline||p.exe||p.name);toast("Copied")}
+  else if(a=="kill"){if(confirm(`End ${p.name} (${pid})?`))act({action:"kill",pid})}
+  else if(a=="killtree"){if(confirm(`End ${p.name} (${pid}) and all its child processes?`))act({action:"kill",pid,tree:true})}
+}
+
+/* ---------- details panel ---------- */
+async function loadDetail(pid){
+  try{
+    const r=await fetch("/api/details?pid="+pid);const j=await r.json();
+    if(!r.ok){detail={pid,error:j.error};}else detail=j;
+  }catch(e){detail={pid,error:e.message}}
+  renderSide();
+}
+function renderSide(){
+  const s=$("side");
+  if(!detail){s.innerHTML="";return}
+  const d=detail;
+  if(d.error){s.innerHTML=`<div class="hd"><h2>PID ${d.pid}</h2><button class="x" id="closeSide">×</button></div><div class="sec">${esc(d.error)}</div>`;$("closeSide").onclick=closeSide;return}
+  const live=procByPid(d.pid)||{};
+  const m=d.memory||{};
+  const ncpu=S.system.ncpu||1;
+  const aff=new Set(d.affinity||[]);
+  const rule=d.rule||{};
+  const tabs=[["general","General"],["net","Network"+(d.connections?` (${d.connections.length})`:"")],["mods","Modules"+(d.modules?` (${d.modules.length})`:"")],["files","Files"+(d.files?` (${d.files.length})`:"")]];
+  let body="";
+  if(detailTab=="general"){
+    body=`
+    <div class="sec"><h3>CPU history (this process)</h3><canvas class="spark" id="spark" width="820" height="120"></canvas>
+      <div class="row" style="margin-top:6px;color:var(--dim)">Now <b style="color:var(--text)" id="dCpu">${live.cpu??"–"}%</b> · Mem <b style="color:var(--text)" id="dMem">${fmtB(live.mem)}</b> · I/O <b style="color:var(--text)" id="dIo">${fmtRate((live.io_r||0)+(live.io_w||0))}</b></div></div>
+    <div class="sec"><h3>CPU priority</h3>
+      <div class="row prbtns">${PRIOS.map(([k,l])=>`<button data-prio="${k}" class="${d.prio==k?"on":""}">${l}</button>`).join("")}</div>
+      <h3 style="margin-top:12px">I/O priority ${d.io_prio?"":"<span style='text-transform:none'>(unknown)</span>"}</h3>
+      <div class="row prbtns">${IOS.map(([k,l])=>`<button data-io="${k}" class="${d.io_prio==k?"on":""}">${l}</button>`).join("")}</div>
+      <h3 style="margin-top:12px">CPU affinity (cores this process may use)</h3>
+      <div class="aff" id="aff">${Array.from({length:ncpu},(_,i)=>`<label><input type="checkbox" value="${i}" ${aff.has(i)?"checked":""}>${i}</label>`).join("")}</div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="affAll">All</button><button class="btn" id="affApply">Apply affinity</button></div>
+    </div>
+    <div class="sec"><h3>Remember for ${esc(d.name)} (auto-apply on every start)</h3>
+      <div class="row">
+        <select id="rP" class="btn"><option value="">CPU: don't change</option>${PRIOS.map(([k,l])=>`<option value="${k}" ${rule.priority==k?"selected":""}>CPU: ${l}</option>`).join("")}</select>
+        <select id="rI" class="btn"><option value="">I/O: don't change</option>${IOS.map(([k,l])=>`<option value="${k}" ${rule.io==k?"selected":""}>I/O: ${l}</option>`).join("")}</select>
+        <label class="chk"><input type="checkbox" id="rA" ${rule.affinity?"checked":""}> current affinity</label>
+      </div>
+      <label class="chk" style="margin-top:8px" title="Writes Image File Execution Options\${esc(d.name)}\PerfOptions in HKLM"><input type="checkbox" id="rR" ${rule.registry?"checked":""}> Also save in Windows registry (works even when Proc View is closed; no Realtime, High I/O or affinity)</label>
+      <div class="row" style="margin-top:8px"><button class="btn primary" id="rSave">Save rule</button>${d.rule?'<button class="btn danger" id="rDel">Remove rule</button>':""}</div>
+    </div>
+    <div class="sec"><h3>Process</h3><div class="kv">
+      <div>PID</div><div>${d.pid}</div>
+      <div>Parent</div><div>${d.parent_name?`<a href="#" data-goto="${d.ppid}" style="color:var(--acc2)">${esc(d.parent_name)} (${d.ppid})</a>`:d.ppid??"–"}</div>
+      <div>User</div><div>${esc(d.user||"–")}</div>
+      <div>Status</div><div>${esc(d.suspended?"suspended":d.status)}</div>
+      <div>Started</div><div>${d.create?new Date(d.create*1000).toLocaleString()+" ("+fmtDur(Date.now()/1000-d.create)+" ago)":"–"}</div>
+      <div>CPU time</div><div>${d.cpu_times?`user ${d.cpu_times.user.toFixed(1)}s · kernel ${d.cpu_times.system.toFixed(1)}s`:"–"}</div>
+      <div>Threads</div><div>${d.threads??"–"}</div>
+      <div>Handles</div><div>${d.handles??"–"}</div>
+      <div>Path</div><div class="mono">${esc(d.exe||"–")}</div>
+      <div>Working dir</div><div class="mono">${esc(d.cwd||"–")}</div>
+      <div>Command line</div><div class="mono">${esc(d.cmdline||"–")}</div>
+      <div>Children</div><div>${d.children.length?d.children.map(c=>`<a href="#" data-goto="${c.pid}" style="color:var(--acc2)">${esc(c.name)} (${c.pid})</a>`).join(", "):"none"}</div>
+    </div></div>
+    <div class="sec"><h3>Memory</h3><div class="kv">
+      <div>Working set</div><div>${fmtB(m.rss)}</div><div>Peak WS</div><div>${fmtB(m.peak_wset)}</div>
+      <div>Private</div><div>${fmtB(m.private)}</div><div>USS (unique)</div><div>${m.uss!=null?fmtB(m.uss):"–"}</div>
+      <div>Paged pool</div><div>${fmtB(m.paged_pool)}</div><div>Non-paged</div><div>${fmtB(m.nonpaged_pool)}</div>
+      <div>Page faults</div><div>${m.num_page_faults?.toLocaleString()??"–"}</div>
+    </div></div>
+    <div class="sec"><h3>Disk I/O totals</h3><div class="kv">
+      <div>Read</div><div>${d.io?fmtB(d.io.read_bytes)+" in "+d.io.read_count.toLocaleString()+" ops":"–"}</div>
+      <div>Written</div><div>${d.io?fmtB(d.io.write_bytes)+" in "+d.io.write_count.toLocaleString()+" ops":"–"}</div>
+      <div>Other</div><div>${d.io&&d.io.other_bytes!=null?fmtB(d.io.other_bytes):"–"}</div>
+    </div></div>
+    <div class="sec row">
+      <button class="btn" data-do="${d.suspended?"resume":"suspend"}">${d.suspended?"Resume":"Suspend"}</button>
+      <button class="btn" data-do="open_location">Open location</button>
+      <button class="btn danger" data-do="kill">End process</button>
+      <button class="btn danger" data-do="killtree">End tree</button>
+    </div>`;
+  }else if(detailTab=="net"){
+    body=d.connections==null?`<div class="sec">Not available (access denied)</div>`:!d.connections.length?`<div class="sec">No open network connections</div>`:
+      `<div class="list">${d.connections.map(c=>`<div>${c.type} ${esc(c.laddr)} → ${esc(c.raddr||"*")} <span style="color:var(--dim)">${esc(c.status)}</span></div>`).join("")}</div>`;
+  }else if(detailTab=="mods"){
+    body=d.modules==null?`<div class="sec">Not available (access denied)</div>`:`<div class="list">${d.modules.map(x=>`<div>${esc(x)}</div>`).join("")}</div>`;
+  }else{
+    body=d.files==null?`<div class="sec">Not available (access denied)</div>`:!d.files.length?`<div class="sec">No open files</div>`:`<div class="list">${d.files.map(x=>`<div>${esc(x)}</div>`).join("")}</div>`;
+  }
+  s.innerHTML=`<div class="hd"><div><h2>${esc(d.name)}</h2><small>PID ${d.pid}${d.rule?' · <span style="color:var(--acc)">★ rule active</span>':""}</small></div><button class="btn" id="refreshSide" title="Refresh">⟳</button><button class="x" id="closeSide">×</button></div>
+    <div class="tabs">${tabs.map(([k,l])=>`<button data-tab="${k}" class="${detailTab==k?"on":""}">${l}</button>`).join("")}</div>${body}`;
+  $("closeSide").onclick=closeSide;
+  $("refreshSide").onclick=()=>loadDetail(d.pid);
+  s.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{detailTab=b.dataset.tab;renderSide()});
+  s.querySelectorAll("[data-goto]").forEach(a=>a.onclick=e=>{e.preventDefault();select(+a.dataset.goto,true);document.querySelector(`#body tr[data-pid="${a.dataset.goto}"]`)?.scrollIntoView({block:"center"})});
+  s.querySelectorAll("[data-prio]").forEach(b=>b.onclick=()=>menuAction("priority",b.dataset.prio,{...live,...d}));
+  s.querySelectorAll("[data-io]").forEach(b=>b.onclick=()=>act({action:"io",pid:d.pid,value:b.dataset.io}));
+  s.querySelectorAll("[data-do]").forEach(b=>b.onclick=()=>menuAction(b.dataset.do,null,{...live,...d}));
+  const affSel=()=>[...s.querySelectorAll("#aff input:checked")].map(i=>+i.value);
+  if($("affAll"))$("affAll").onclick=()=>s.querySelectorAll("#aff input").forEach(i=>i.checked=true);
+  if($("affApply"))$("affApply").onclick=()=>{const v=affSel();if(!v.length)return toast("Pick at least one core",true);act({action:"affinity",pid:d.pid,value:v})};
+  if($("rSave"))$("rSave").onclick=async()=>{
+    const r={priority:$("rP").value||null,io:$("rI").value||null,affinity:$("rA").checked?affSel():null,registry:$("rR").checked};
+    if(!r.priority&&!r.io&&!r.affinity)return toast("Choose at least one setting to remember",true);
+    act({action:"rule",name:d.name,rule:r});
+  };
+  if($("rDel"))$("rDel").onclick=()=>act({action:"rule",name:d.name,rule:null});
+  drawSpark();
+}
+function closeSide(){detail=null;$("main").classList.remove("withside");$("side").innerHTML=""}
+function drawSpark(){
+  const c=$("spark");if(!c||!detail)return;
+  const h=hist[detail.pid]||[];const ctx=c.getContext("2d");const W=c.width,H=c.height;
+  ctx.clearRect(0,0,W,H);
+  const max=Math.max(10,...h)*1.1;
+  ctx.strokeStyle="#262e3e";ctx.lineWidth=1;
+  for(let i=1;i<4;i++){ctx.beginPath();ctx.moveTo(0,H*i/4);ctx.lineTo(W,H*i/4);ctx.stroke()}
+  if(h.length<2)return;
+  const step=W/(120-1),x0=W-(h.length-1)*step;
+  ctx.beginPath();h.forEach((v,i)=>{const x=x0+i*step,y=H-v/max*H;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+  ctx.strokeStyle="#3cc88c";ctx.lineWidth=2.5;ctx.stroke();
+  ctx.lineTo(W,H);ctx.lineTo(x0,H);ctx.closePath();ctx.fillStyle="rgba(60,200,140,.15)";ctx.fill();
+  ctx.fillStyle="#8792a6";ctx.font="20px Segoe UI";ctx.fillText(max.toFixed(0)+"%",6,22);
+}
+function updateSideLive(){
+  if(!detail||detail.error)return;const p=procByPid(detail.pid);
+  if(!p){detail={pid:detail.pid,error:"Process has exited."};renderSide();return}
+  if($("dCpu")){$("dCpu").textContent=(p.cpu??"–")+"%";$("dMem").textContent=fmtB(p.mem);$("dIo").textContent=fmtRate((p.io_r||0)+(p.io_w||0))}
+  drawSpark();
+}
+
+/* ---------- modals ---------- */
+function modal(html){$("modalBox").innerHTML=html;$("modal").style.display="flex"}
+$("modal").onclick=e=>{if(e.target.id=="modal")$("modal").style.display="none"};
+$("rulesBtn").onclick=showRules;
+function showRules(){
+  const rs=Object.entries(S.rules);
+  modal(`<h3 style="margin-top:0">Priority rules</h3>
+   <p style="color:var(--dim);margin-top:0">These settings are applied automatically every time a process with that name starts. Add one from the right-click menu ("Always use priority") or the details panel. Saved in config.json. Rules marked "registry" are also stored in Windows (Image File Execution Options) so they work even when Proc View is closed; removing the rule here removes that too.</p>
+   ${rs.length?`<table><thead><tr><th>Process</th><th>CPU</th><th>I/O</th><th>Affinity</th><th>Registry</th><th></th></tr></thead><tbody>${rs.map(([n,r])=>`<tr><td>${esc(n)}</td><td>${r.priority?PRIO_LABEL[r.priority]:"–"}</td><td>${r.io||"–"}</td><td>${r.affinity?r.affinity.length+" cores":"–"}</td><td><label class="chk"><input type="checkbox" data-reg="${esc(n)}" ${r.registry?"checked":""}>${r.registry?"yes":"no"}</label></td><td><button class="btn danger" data-del="${esc(n)}">Remove</button></td></tr>`).join("")}</tbody></table>`:"<p>No rules yet.</p>"}
+   <h3>Add rule by name</h3>
+   <div class="row"><input id="nrName" class="btn" placeholder="e.g. game.exe" style="width:200px">
+   <select id="nrP" class="btn">${PRIOS.map(([k,l])=>`<option value="${k}" ${k=="high"?"selected":""}>${l}</option>`).join("")}</select>
+   <label class="chk"><input type="checkbox" id="nrR"> also in registry</label>
+   <button class="btn primary" id="nrAdd">Add</button></div>
+   <div class="row" style="justify-content:space-between;margin-top:14px">${rs.some(([n,r])=>r.registry)?'<button class="btn danger" id="unregAll" title="Do this before uninstalling Proc View">Remove all from registry</button>':"<span></span>"}<button class="btn" onclick="$('modal').style.display='none'">Close</button></div>`);
+  if($("unregAll"))$("unregAll").onclick=async()=>{if(confirm("Remove all Proc View entries from the Windows registry? Rules stay in Proc View but only work while it runs."))await act({action:"unregister_all"});showRules()};
+  $("modalBox").querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{await act({action:"rule",name:b.dataset.del,rule:null});showRules()});
+  $("nrAdd").onclick=async()=>{const n=$("nrName").value.trim();if(!n)return;await act({action:"rule",name:n,rule:{priority:$("nrP").value,registry:$("nrR").checked}});showRules()};
+  $("modalBox").querySelectorAll("[data-reg]").forEach(c=>c.onchange=async()=>{const n=c.dataset.reg;await act({action:"rule",name:n,rule:{...S.rules[n],registry:c.checked}});showRules()});
+}
+$("logBtn").onclick=()=>modal(`<h3 style="margin-top:0">Activity log</h3><div class="list" style="max-height:60vh">${[...S.events].reverse().map(e=>`<div><span style="color:var(--dim)">${new Date(e.t*1000).toLocaleTimeString()}</span> ${esc(e.msg)}</div>`).join("")||"Nothing yet."}</div><div style="text-align:right;margin-top:10px"><button class="btn" onclick="$('modal').style.display='none'">Close</button></div>`);
+
+/* ---------- toolbar ---------- */
+$("view").onclick=e=>{const b=e.target.closest("button");if(!b)return;view=b.dataset.v;[...$("view").children].forEach(x=>x.classList.toggle("on",x==b));render()};
+$("q").oninput=render;
+$("hideSys").onchange=()=>{try{localStorage.pvHideSys=$("hideSys").checked?"1":""}catch(e){}render()};
+$("pause").onchange=()=>paused=$("pause").checked;
+try{$("hideSys").checked=!!localStorage.pvHideSys}catch(e){}
+
+/* ---------- polling ---------- */
+function renderSystem(){
+  const s=S.system;if(!s.ncpu)return;
+  $("sCpu").textContent=s.cpu.toFixed(0)+"%";$("bCpu").style.width=s.cpu+"%";
+  $("cores").innerHTML=s.per_cpu.map(v=>`<div style="height:${Math.max(2,v/100*34)}px" title="${v.toFixed(0)}%"></div>`).join("");
+  $("sMem").textContent=`${fmtB(s.mem_used)} / ${fmtB(s.mem_total)}`;$("bMem").style.width=s.mem_pct+"%";
+  $("sNet").textContent=`${fmtRate(s.net_down)} / ${fmtRate(s.net_up)}`;
+  $("sCnt").textContent=s.count;$("sTh").textContent=`${s.threads.toLocaleString()} / ${s.handles.toLocaleString()}`;
+  $("sUp").textContent=fmtDur(Date.now()/1000-s.boot);
+  const a=$("admin");a.textContent=s.admin?"Administrator":"Limited (not admin)";a.className="badge "+(s.admin?"ok":"no");
+  const ev=S.events[S.events.length-1];$("lastEv").textContent=ev?"· "+ev.msg:"";
+}
+async function poll(){
+  try{
+    const r=await fetch("/api/state");const j=await r.json();
+    S=j;
+    const live=new Set();
+    for(const p of S.procs){live.add(p.pid);const h=hist[p.pid]||(hist[p.pid]=[]);h.push(p.cpu||0);if(h.length>120)h.shift()}
+    for(const k in hist)if(!live.has(+k))delete hist[k];
+    renderSystem();render();updateSideLive();
+    $("ft").textContent="Live · updated "+new Date().toLocaleTimeString();
+  }catch(e){$("ft").textContent="Disconnected — is Proc View running?"}
+}
+{const u=new URLSearchParams(location.search);if(u.get("q"))$("q").value=u.get("q");const v=u.get("view");if(v)document.querySelector(`#view [data-v="${v}"]`)?.click()}
+renderHead();poll();
+setInterval(()=>{if(!paused&&!document.hidden&&$("menu").style.display!="block")poll()},1500);
+</script>
+</body>
+</html>

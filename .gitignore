@@ -1,0 +1,10 @@
+# your personal settings and rules - never commit
+config.json
+config.json.tmp
+
+# build output
+build/
+dist/
+*.spec
+__pycache__/
+*.pyc
