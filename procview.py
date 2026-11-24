@@ -1,4 +1,4 @@
-"""Proc View - an advanced live process viewer for Windows.
+﻿"""Proc View - an advanced live process viewer for Windows.
 
 Run:  pythonw procview.py   (asks for admin rights so it can see and manage every process)
 """
@@ -15,7 +15,7 @@ from urllib.parse import urlparse, parse_qs
 
 import psutil
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 DONATE_URL = "https://buymeacoffee.com/kuzucevirme"
 
 FROZEN = getattr(sys, "frozen", False)  # running as a PyInstaller .exe
